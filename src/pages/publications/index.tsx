@@ -11,57 +11,63 @@ import type { PageWithLayout } from '../pages'
 import { TfiWrite } from 'react-icons/tfi'
 import { RiArticleLine } from 'react-icons/ri'
 
-import {google} from "googleapis"
+import { google } from 'googleapis'
 
 type ResearchSchema = {
-    title: string;
+    title: string
     link?: string
 }
 
-export const getServerSideProps = async (_context: GetServerSidePropsContext) => {
-
-    const CLIENT_EMAIL=process.env.GOOGLE_CLIENT_EMAIL;
-    const CLIENT_PRIVATE_KEY=process.env.GOOGLE_PRIVATE_KEY;
-    const DATABASE_ID=process.env.DATABASE_PUBLICATIONS_ID;
-    const DATABASE_READ_RANGE='A2:B4';
+export const getServerSideProps = async (
+    _context: GetServerSidePropsContext
+) => {
+    const CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL
+    const CLIENT_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY
+    const DATABASE_ID = process.env.DATABASE_PUBLICATIONS_ID
+    const DATABASE_READ_RANGE = 'A2:B'
 
     const auth = new google.auth.GoogleAuth({
         credentials: {
             client_email: CLIENT_EMAIL,
-            private_key: CLIENT_PRIVATE_KEY?.replace(/\\n/g, '\n')
+            private_key: CLIENT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         },
         scopes: [
             'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/spreadsheets',
-        ]
+        ],
     })
 
     const sheets = google.sheets({
         auth,
-        version: 'v4'
+        version: 'v4',
     })
 
-    const response = await sheets.spreadsheets.values.get({spreadsheetId: DATABASE_ID, range: DATABASE_READ_RANGE})
-    const values = response.data.values;
-
-    const data = values.filter(each => each.length >=1 && each[0]).map(each => {
-
-        const title = each[0]
-        const link =each[1] ?? ""
-
-        return {
-            title, link
-        } as unknown as ResearchSchema
-        
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: DATABASE_ID,
+        range: DATABASE_READ_RANGE,
     })
+    const values = response.data.values
 
+    const data = values
+        .filter((each) => each.length >= 1 && each[0])
+        .map((each) => {
+            const title = each[0]
+            const link = each[1] ?? ''
 
-    return { props: {data} }
+            return {
+                title,
+                link,
+            } as unknown as ResearchSchema
+        })
+
+    return { props: { data } }
 }
 
 // PAGE
-const PublicationsPage: PageWithLayout<{data: ResearchSchema[]}> = ({data}) => {
+const PublicationsPage: PageWithLayout<{ data: ResearchSchema[] }> = ({
+    data,
+}) => {
     const { theme } = useTheme()
 
     return (
@@ -89,14 +95,26 @@ const PublicationsPage: PageWithLayout<{data: ResearchSchema[]}> = ({data}) => {
                                 theme === 'dark' ? 'bg-[#111]/50 ' : ''
                             )}
                         >
-                           <p className='text-wrap break-words w-full'>
-                            {each.title}
-                           </p>
-                       {each.link && (
-                            <a href={each.link} target='_blank'  className='font-medium uppercase tracking-[0.075rem] flex justify-center items-center w-full px-5 py-3 rounded-md bg-neutral-900 border text-white lg:hover:bg-neutral-600' rel="noreferrer">
-                            Visit Publication
-                       </a>
-                       )}
+                            <p className="text-wrap break-words w-full">
+                                {each.title}
+                            </p>
+                            {each.link && (
+                                <a
+                                    href={each.link}
+                                    target="_blank"
+                                    className={classnames(
+                                        'transition-smooth flex items-center space-x-2 w-full px-6 py-3 justify-center rounded-md lg:hover:opacity-70 font-medium',
+                                        theme === 'dark'
+                                            ? 'bg-white text-ddark backdrop-blur-sm'
+                                            : 'bg-ddark text-white backdrop-blur-sm'
+                                    )}
+                                    rel="noreferrer"
+                                >
+                           
+                                   Visit Publication
+                           
+                                </a>
+                            )}
                         </div>
                     ))}
                 </ul>
