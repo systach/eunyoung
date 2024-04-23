@@ -9,13 +9,6 @@ import { HiOutlineArrowRight } from 'react-icons/hi'
 import { Box } from '@pkg/react'
 import { classnames } from '@pkg/utils'
 import { useTheme } from 'apps/context'
-import EunyoungProfileImage1 from 'public/eunyoung_profile_image1.jpg'
-import EunyoungProfileImage4 from 'public/eunyoung_profile_image4.jpg'
-import Image from 'next/image'
-// SSR
-export const getServerSideProps = (_context: GetServerSidePropsContext) => {
-    return { props: {} }
-}
 
 // PAGE
 const HomePage: PageWithLayout = () => {

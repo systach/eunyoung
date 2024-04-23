@@ -6,17 +6,61 @@ import { classnames } from '@pkg/utils'
 import { useTheme } from 'apps/context'
 import type { GetServerSidePropsContext } from 'next'
 import type { PageWithLayout } from '../pages'
-import { HiArrowLongRight } from 'react-icons/hi2'
 import Link from 'next/link'
 import { RiArticleLine } from 'react-icons/ri'
 import { TfiWrite } from 'react-icons/tfi'
-// SSR
-export const getServerSideProps = (_context: GetServerSidePropsContext) => {
-    return { props: {} }
+import {google} from "googleapis"
+
+type ResearchSchema = {
+    title: string;
+    briefs: [string] | [string, string] | [string, string, string]
+}
+
+export const getServerSideProps = async (_context: GetServerSidePropsContext) => {
+
+    const CLIENT_EMAIL=process.env.GOOGLE_CLIENT_EMAIL;
+    const CLIENT_PRIVATE_KEY=process.env.GOOGLE_PRIVATE_KEY;
+    const DATABASE_ID=process.env.DATABASE_RESEARCH_ID;
+    const DATABASE_READ_RANGE='A2:D2';
+
+    const auth = new google.auth.GoogleAuth({
+        credentials: {
+            client_email: CLIENT_EMAIL,
+            private_key: CLIENT_PRIVATE_KEY?.replace(/\\n/g, '\n')
+        },
+        scopes: [
+            'https://www.googleapis.com/auth/drive',
+            'https://www.googleapis.com/auth/drive.file',
+            'https://www.googleapis.com/auth/spreadsheets',
+        ]
+    })
+
+    const sheets = google.sheets({
+        auth,
+        version: 'v4'
+    })
+
+    const response = await sheets.spreadsheets.values.get({spreadsheetId: DATABASE_ID, range: DATABASE_READ_RANGE})
+    const values = response.data.values;
+
+    const data = values.filter(each => each.length >=1 && each[0]).map(each => {
+
+        const title = each[0]
+        const briefs = each.splice(1).filter(Boolean)
+
+        return {
+            title, briefs
+        } as unknown as ResearchSchema
+        
+    })
+
+
+    return { props: {data} }
 }
 
 // PAGE
-const ResearchPage: PageWithLayout = () => {
+const ResearchPage: PageWithLayout<{data: ResearchSchema[]}> = ({data}) => {
+
     const { theme } = useTheme()
     return (
         <>
@@ -35,7 +79,7 @@ const ResearchPage: PageWithLayout = () => {
                     </h3>
                 </div>
                 <ul className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
-                    {Object.values(research).map((each, index) => (
+                    {data.map((each, index) => (
                         <div
                             key={index}
                             className={classnames(
@@ -44,21 +88,21 @@ const ResearchPage: PageWithLayout = () => {
                             )}
                         >
                             <h3 className="mb-4 text-lg lg:text-xl font-work-sans">
-                                {index + 1} {each.title}
+                              {each.title}
                             </h3>
-                            {each.descriptions && (
-                                <p className="flex flex-col space-y-4 font-nunito text-sm lg:text-base font-light">
-                                    {each.descriptions.map(
-                                        (description, jndex) => (
-                                            <span
+                            {each.briefs && (
+                                <div className="flex flex-col space-y-4 font-nunito text-sm lg:text-base font-light">
+                                    {each.briefs.map(
+                                        (brief, jndex) => (
+                                            <p
                                                 key={jndex}
                                                 className="pl-4 border-l-2 border-neutral-400 text-neutral-400 leading-7"
                                             >
-                                                <span>{description}</span>
-                                            </span>
+                                                <span>{brief}</span>
+                                            </p>
                                         )
                                     )}
-                                </p>
+                                </div>
                             )}
                         </div>
                     ))}

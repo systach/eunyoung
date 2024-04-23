@@ -10,13 +10,58 @@ import { useEffect, useRef } from 'react'
 import type { PageWithLayout } from '../pages'
 import { TfiWrite } from 'react-icons/tfi'
 import { RiArticleLine } from 'react-icons/ri'
-// SSR
-export const getServerSideProps = (_context: GetServerSidePropsContext) => {
-    return { props: {} }
+
+import {google} from "googleapis"
+
+type ResearchSchema = {
+    title: string;
+    link?: string
+}
+
+export const getServerSideProps = async (_context: GetServerSidePropsContext) => {
+
+    const CLIENT_EMAIL=process.env.GOOGLE_CLIENT_EMAIL;
+    const CLIENT_PRIVATE_KEY=process.env.GOOGLE_PRIVATE_KEY;
+    const DATABASE_ID=process.env.DATABASE_PUBLICATIONS_ID;
+    const DATABASE_READ_RANGE='A2:B4';
+
+    const auth = new google.auth.GoogleAuth({
+        credentials: {
+            client_email: CLIENT_EMAIL,
+            private_key: CLIENT_PRIVATE_KEY?.replace(/\\n/g, '\n')
+        },
+        scopes: [
+            'https://www.googleapis.com/auth/drive',
+            'https://www.googleapis.com/auth/drive.file',
+            'https://www.googleapis.com/auth/spreadsheets',
+        ]
+    })
+
+    const sheets = google.sheets({
+        auth,
+        version: 'v4'
+    })
+
+    const response = await sheets.spreadsheets.values.get({spreadsheetId: DATABASE_ID, range: DATABASE_READ_RANGE})
+    const values = response.data.values;
+
+    const data = values.filter(each => each.length >=1 && each[0]).map(each => {
+
+        const title = each[0]
+        const link =each[1] ?? ""
+
+        return {
+            title, link
+        } as unknown as ResearchSchema
+        
+    })
+
+
+    return { props: {data} }
 }
 
 // PAGE
-const PublicationsPage: PageWithLayout = () => {
+const PublicationsPage: PageWithLayout<{data: ResearchSchema[]}> = ({data}) => {
     const { theme } = useTheme()
 
     return (
@@ -36,34 +81,22 @@ const PublicationsPage: PageWithLayout = () => {
                     </h3>
                 </div>
                 <ul className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
-                    {Object.values(publications).map((publication, index) => (
+                    {data.map((each, index) => (
                         <div
                             key={index}
                             className={classnames(
-                                'transition-smooth w-full overflow-x-scroll p-8 border rounded shadow-xl border-ddark/10 hover:shadow-2xl',
+                                'transition-smooth w-full p-8 border rounded shadow-xl border-ddark/10 hover:shadow-2xl flex flex-col justify-between gap-y-10',
                                 theme === 'dark' ? 'bg-[#111]/50 ' : ''
                             )}
                         >
-                            <p className="flex leading-7">
-                                {Array.isArray(publication) ? (
-                                    <>
-                                        <span className="inline-block">
-                                            {publication[0]}{' '}
-                                            <a
-                                                className="text-blue-500 transition-smooth hover:text-dblue"
-                                                href={publication[1]}
-                                            >
-                                                {publication[1]}
-                                            </a>{' '}
-                                            {publication[2]}
-                                        </span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>{publication}</span>
-                                    </>
-                                )}
-                            </p>
+                           <p className='text-wrap break-words w-full'>
+                            {each.title}
+                           </p>
+                       {each.link && (
+                            <a href={each.link} target='_blank'  className='font-medium uppercase tracking-[0.075rem] flex justify-center items-center w-full px-5 py-3 rounded-md bg-neutral-900 border text-white lg:hover:bg-neutral-600' rel="noreferrer">
+                            Visit Publication
+                       </a>
+                       )}
                         </div>
                     ))}
                 </ul>
